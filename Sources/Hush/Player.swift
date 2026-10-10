@@ -113,6 +113,13 @@ final class Player: ObservableObject {
         store.saveFavorites(favorites)
     }
 
+    /// Quitting while playing skips the normal stop path, so log the session here or it would be lost.
+    func recordSessionOnQuit() {
+        guard let start = sessionStart else { return }
+        journal.record(start: start, end: Date(), sound: settings.summary)
+        sessionStart = nil
+    }
+
     // MARK: Playback
 
     func toggle() {
