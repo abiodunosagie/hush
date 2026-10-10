@@ -2,3 +2,5 @@
 build/
 .DS_Store
 SESSION_GUIDE.md
+.swiftpm/
+*.xcodeproj/
