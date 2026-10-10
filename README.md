@@ -16,16 +16,16 @@ Built with Swift, SwiftUI and AVAudioEngine. It has no dependencies, needs no ne
   - There are 15 binaural presets and 5 isochronic presets, from 1 Hz to 40 Hz.
 - **Noise.** Brown, pink, white, green, blue, violet and grey noise. All seven are level-matched, so switching colour does not change the loudness.
 - **Nature sounds.** Rain, ocean waves, wind, fireplace and stream. They are generated procedurally from filtered noise, and you can layer as many as you like.
-- **3D movement.** Noise and nature sounds slowly circle your head on an equal-power pan, while the tone stays centred.
+- **3D movement.** Noise and nature sounds sweep slowly from side to side on an equal-power pan, while the tone stays centred.
 - **Breathing guide.** The volume swells six times a minute, and an on-screen circle shows when to breathe in and out.
 - **Sleep journeys.** The pulse rate steps down in stages, for example from 10 Hz to 6 Hz to 3 Hz. Each stage glides into the next, and you can edit the stages.
-- **Sleep timer.** Up to 12 hours. The sound fades slowly over the final stretch (up to 10 minutes), so the stop never wakes anyone.
+- **Sleep timer.** Up to 12 hours. The sound fades slowly over the final stretch (up to 10 minutes), so the stop is never abrupt.
 - **Keeps the Mac awake while playing.** The system stays awake, but the display can still sleep.
 - **Menu bar control.** Closing the window keeps the sound playing. The menu bar icon gives you play and stop, the timer, your favorites and quit.
 - **Favorites and a session journal.** Save any mix. Each session longer than a minute is logged, and you can rate your mood before and after.
 - **Light and dark mode.** It follows the system theme.
 
-The tone and preset names (Third eye, Deep sleep and so on) are the traditional Solfeggio and brainwave labels people search for. They are names, not medical claims.
+The tone and preset names (Third eye, Deep sleep and so on) are the traditional Solfeggio and brainwave labels people search for. Hush is not a medical device and makes no health claims.
 
 ## How it is built
 
@@ -40,7 +40,7 @@ Real-time audio can crackle, drop out or drift over a long night. These choices 
 - **Soft clipping instead of a hard clamp.** Output below 0.7 passes through untouched, so a pure tone stays pure. Only loud peaks are rounded off with `tanh`.
 - **The brown noise is a leaky integrator.** The leak keeps it centred for hours instead of drifting into clipping.
 - **Output device changes are seamless.** Plugging in headphones rebuilds the engine at the new sample rate. The new engine starts from the old fade level and breathing position, so the sound continues where it was.
-- **Saved data survives version changes.** Settings decode field by field, falling back to defaults. Favorites decode one by one, so a single unreadable entry cannot wipe the list, and a backup is kept before anything is overwritten.
+- **Saved data survives version changes.** Settings decode field by field, falling back to defaults. Favorites decode one by one, so a single unreadable entry cannot wipe the list. Backups are kept of unreadable favorites and journal data before anything is overwritten.
 
 ## Requirements
 
@@ -56,7 +56,7 @@ cd hush
 open build/Hush.app
 ```
 
-`swift run` also works for a quick look, but the bundled `.app` is what gets a proper menu bar item and window.
+`swift run` also works for a quick look, but the bundled `.app` is what gets a proper menu bar item and window. Neither `swift run` nor `--selftest` needs signing. The build is ad-hoc signed, so if you copy the `.app` to another Mac, Gatekeeper may ask you to confirm the first launch (right-click, then Open).
 
 The bundle identifier is `com.abiodun.hush`, set in `scripts/build.sh`. Change it there if you ship your own build.
 
@@ -69,7 +69,7 @@ swift build -c release
 $(swift build -c release --show-bin-path)/Hush --selftest
 ```
 
-There are 28 checks, and they take about a minute. They cover:
+There are 28 checks. They cover:
 
 - Every noise colour and nature sound is level-matched to brown noise.
 - Three hours with every layer at maximum stays under full scale, with no NaN and no DC drift.
@@ -93,9 +93,13 @@ Sources/Hush/
   AudioEngineHost.swift  AVAudioEngine setup and rebuild on device change
   Player.swift           playback state, sleep timer, journeys, keep-awake
   Settings.swift         settings model, tolerant decoding, favorites storage
+  Presets.swift          tone presets, binaural and isochronic presets, brainwave labels
   Journey.swift          journey schedule (pure function, tested)
   Journal.swift          session journal stored as JSON in Application Support
-  *Tab.swift, Visuals.swift, Components.swift   SwiftUI interface
+  ContentView.swift      window shell: tabs, sleep timer, play button
+  SoundTab.swift, LayersTab.swift, JourneyTab.swift, FavoritesTab.swift, JournalTab.swift   one file per tab
+  Visuals.swift          waveform and breathing guide
+  Components.swift       shared SwiftUI building blocks
   HushApp.swift          app entry, menu bar extra, --selftest switch
   SelfTest.swift         offline audio checks
 scripts/build.sh         builds and assembles the .app bundle

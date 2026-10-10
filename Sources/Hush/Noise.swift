@@ -24,7 +24,7 @@ enum NoiseColor: Int, CaseIterable, Identifiable, Codable {
         case .white: return "Bright hiss. Masks sharp sounds best."
         case .green: return "Centered on the middle of hearing. Like a gentle stream in a forest."
         case .blue: return "Crisp and airy. Like a light spray of water."
-        case .violet: return "Very high hiss with almost no bass. Some find it soothes ringing ears."
+        case .violet: return "Very high hiss with almost no bass."
         case .grey: return "Balanced so lows and highs feel equally loud to the human ear."
         }
     }
