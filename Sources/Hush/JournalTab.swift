@@ -1,53 +1,5 @@
 import SwiftUI
 
-/// Saved mixes. Loading one replaces every sound setting at once.
-struct FavoritesTab: View {
-    @ObservedObject var player: Player
-    @State private var name = ""
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Panel("Save current sound") {
-                HStack {
-                    TextField(player.settings.summary, text: $name)
-                        .textFieldStyle(.roundedBorder)
-                        .onSubmit(save)
-                    Button("Save", action: save)
-                }
-            }
-
-            Panel("Favorites") {
-                if player.favorites.isEmpty {
-                    Hint("Nothing saved yet. Set up a sound you like, give it a name and press Save.")
-                }
-                ForEach(player.favorites) { favorite in
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(favorite.name).font(.headline)
-                            Text(favorite.settings.summary).font(.callout).foregroundStyle(.secondary).lineLimit(1)
-                        }
-                        Spacer()
-                        Button("Load") { player.loadFavorite(favorite) }
-                        Button {
-                            player.deleteFavorite(favorite)
-                        } label: {
-                            Image(systemName: "trash")
-                        }
-                        .buttonStyle(.borderless)
-                        .accessibilityLabel("Delete \(favorite.name)")
-                    }
-                    .padding(.vertical, 2)
-                }
-            }
-        }
-    }
-
-    private func save() {
-        player.saveFavorite(named: name)
-        name = ""
-    }
-}
-
 /// Every session over a minute is logged automatically. Rating mood before and after shows what helps.
 struct JournalTab: View {
     @ObservedObject var journal: JournalStore
@@ -108,13 +60,18 @@ private struct JournalRow: View {
             moodRow("After", value: entry.moodAfter) { var e = entry; e.moodAfter = $0; journal.update(e) }
             TextField("Note (how did you sleep?)", text: $note)
                 .textFieldStyle(.roundedBorder)
-                .onChange(of: note) { _, newValue in
-                    var e = entry
-                    e.note = newValue
-                    journal.update(e)
-                }
+                // Save on Enter or when the row goes away, not on every keystroke (each save rewrites the file).
+                .onSubmit(saveNote)
+                .onDisappear(perform: saveNote)
         }
         .padding(.vertical, 4)
+    }
+
+    private func saveNote() {
+        guard note != entry.note else { return }
+        var e = entry
+        e.note = note
+        journal.update(e)
     }
 
     private static let faces = ["1 Awful", "2 Low", "3 Okay", "4 Good", "5 Great"]

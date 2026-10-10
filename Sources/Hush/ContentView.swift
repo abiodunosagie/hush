@@ -80,7 +80,8 @@ struct ContentView: View {
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
-            .keyboardShortcut(.space, modifiers: [])
+            // Space plays and stops, except on tabs with text fields, where it must type a space.
+            .keyboardShortcut(tab == .favorites || tab == .journal ? nil : KeyboardShortcut(.space, modifiers: []))
             // Never disable while playing, or a running session could not be stopped.
             .disabled(!player.isPlaying && !player.settings.hasAnySource)
         }

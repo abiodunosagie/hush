@@ -14,6 +14,7 @@ enum SelfTest {
         var ok = true
         ok = loudnessBalance(left: left, right: right) && ok
         for color in NoiseColor.allCases {
+            // Brown gets the full overnight-length run; the others share the same code path, so a shorter run keeps the suite fast.
             ok = longRun(color: color, hours: color == .brown ? 3 : 0.5, left: left, right: right) && ok
         }
         ok = tonePitch(left: left, right: right) && ok
@@ -24,6 +25,7 @@ enum SelfTest {
         ok = fadeSurvivesRebuild(left: left, right: right) && ok
         ok = journeySchedule() && ok
         ok = settingsRoundTrip() && ok
+        ok = settingsSurviveBadData() && ok
         return ok
     }
 
@@ -99,7 +101,7 @@ enum SelfTest {
         params.toneLevel.value = 1
         params.toneMode = .binaural
         params.beatHz.value = 12
-        params.swellDepth.value = Player.swellDepth
+        params.swellDepth.value = NoiseSynth.swellDepth
         params.spatialEnabled.store(true, ordering: .relaxed)
         for level in params.ambientLevels { level.value = 1 }
         var synth = NoiseSynth(sampleRate: sampleRate, params: params)
@@ -308,11 +310,34 @@ enum SelfTest {
         s.toneMode = .isochronic
         s.beatHz = 2.5
         s.noiseColor = .violet
-        s.ambient[.ocean] = AmbientSetting(enabled: true, level: 0.3)
+        s.setAmbient(.ocean) { $0 = AmbientSetting(enabled: true, level: 0.3) }
         s.journeySteps = [JourneyStep(beat: 4, minutes: 7)]
         let roundTrip = (try? JSONEncoder().encode(s)).flatMap { try? JSONDecoder().decode(SoundSettings.self, from: $0) }
         let old = try? JSONDecoder().decode(SoundSettings.self, from: Data(#"{"toneFrequency": 528}"#.utf8))
         let pass = roundTrip == s && old?.toneFrequency == 528 && old?.toneMode == .steady
         return report(pass, "settings save and load, including data from an older version")
+    }
+
+    /// One unknown or broken value must never wipe the rest of the settings or the favorites list.
+    private static func settingsSurviveBadData() -> Bool {
+        let json = #"{"toneFrequency": 639, "toneMode": "bogus", "ambient": {"lava": {"enabled": true, "level": 1}, "rain": {"enabled": true, "level": 0.2}}}"#
+        let s = try? JSONDecoder().decode(SoundSettings.self, from: Data(json.utf8))
+        let settingsOK = s?.toneFrequency == 639 && s?.toneMode == .steady
+            && s?.ambientSetting(.rain) == AmbientSetting(enabled: true, level: 0.2)
+
+        let suite = "hush.selftest.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suite) else { return report(false, "could not create test defaults") }
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let good = Favorite(name: "Night", settings: SoundSettings())
+        var goodJSON = String(data: (try? JSONEncoder().encode(good)) ?? Data(), encoding: .utf8) ?? ""
+        if goodJSON.isEmpty { goodJSON = "{}" }
+        defaults.set(Data("[\(goodJSON), {\"broken\": true}]".utf8), forKey: "hush.favorites")
+        let store = SettingsStore(defaults: defaults)
+        let loaded = store.loadFavorites()
+        let backedUp = defaults.data(forKey: "hush.favorites.backup") != nil
+        let favoritesOK = loaded.map(\.name) == ["Night"] && backedUp
+
+        return report(settingsOK && favoritesOK,
+                      "bad saved data: other settings kept (\(settingsOK)), good favorites kept and backup made (\(favoritesOK))")
     }
 }

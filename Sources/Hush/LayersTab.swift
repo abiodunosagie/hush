@@ -4,7 +4,7 @@ import SwiftUI
 struct LayersTab: View {
     @ObservedObject var player: Player
 
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 4)
+    private let columns = UI.grid(4)
     private var s: SoundSettings { player.settings }
 
     var body: some View {
@@ -45,11 +45,11 @@ struct LayersTab: View {
 
     private func ambientEnabled(_ kind: AmbientKind) -> Binding<Bool> {
         Binding(get: { player.settings.ambientSetting(kind).enabled },
-                set: { player.settings.ambient[kind, default: AmbientSetting()].enabled = $0 })
+                set: { value in player.settings.setAmbient(kind) { $0.enabled = value } })
     }
 
     private func ambientLevel(_ kind: AmbientKind) -> Binding<Double> {
         Binding(get: { player.settings.ambientSetting(kind).level },
-                set: { player.settings.ambient[kind, default: AmbientSetting()].level = $0 })
+                set: { value in player.settings.setAmbient(kind) { $0.level = value } })
     }
 }

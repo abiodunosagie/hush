@@ -5,7 +5,7 @@ struct SoundTab: View {
     @ObservedObject var player: Player
     @State private var showCustom = false
 
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 4)
+    private let columns = UI.grid(4)
     private var s: SoundSettings { player.settings }
 
     var body: some View {
@@ -52,7 +52,7 @@ struct SoundTab: View {
 
     @ViewBuilder private var pulseControls: some View {
         let presets = s.toneMode == .binaural ? BeatPreset.binaural : BeatPreset.isochronic
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 5), spacing: 6) {
+        LazyVGrid(columns: UI.grid(5), spacing: 6) {
             ForEach(presets) { preset in
                 Tile(title: Format.hz(preset.beat), subtitle: preset.name,
                      selected: s.toneFrequency == preset.carrier && s.beatHz == preset.beat) {
@@ -62,7 +62,7 @@ struct SoundTab: View {
             }
         }
         if let journeyBeat = player.journeyBeat {
-            Hint("Journey is steering the pulse: now \(Format.hz((journeyBeat * 10).rounded() / 10)), \(BrainwaveBand.of(journeyBeat).rawValue).")
+            Hint("Journey is steering the pulse: now \(Format.hz(journeyBeat)), \(BrainwaveBand.of(journeyBeat).rawValue).")
         } else {
             LabeledRow("Pulse") {
                 Slider(value: $player.settings.beatHz, in: BeatPreset.beatRange, step: 0.5)

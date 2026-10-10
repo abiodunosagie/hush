@@ -10,11 +10,11 @@ struct JourneyTab: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             Panel("Journey", toggle: $player.settings.journeyEnabled) {
-                if s.toneMode == .steady || !s.toneEnabled {
+                if !player.canRunJourney {
                     Hint("Journeys change the pulse, so they need the tone on in Binaural or Isochronic mode.")
                     HStack {
-                        Button("Use binaural (headphones)") { useMode(.binaural) }
-                        Button("Use isochronic (speakers)") { useMode(.isochronic) }
+                        Button("Use binaural (headphones)") { player.useToneMode(.binaural) }
+                        Button("Use isochronic (speakers)") { player.useToneMode(.isochronic) }
                     }
                 } else {
                     status
@@ -36,8 +36,8 @@ struct JourneyTab: View {
                     }
                     HStack {
                         Button("Add stage") {
-                            let last = s.journeySteps.last ?? JourneyStep(beat: 6, minutes: 10)
-                            player.settings.journeySteps.append(JourneyStep(beat: last.beat, minutes: 10))
+                            let beat = s.journeySteps.last?.beat ?? s.beatHz
+                            player.settings.journeySteps.append(JourneyStep(beat: beat, minutes: Journey.newStageMinutes))
                         }
                         Spacer()
                         Text("Total \(Format.minutes(Int(Journey.totalMinutes(s.journeySteps)))), last stage holds until you stop.")
@@ -50,7 +50,7 @@ struct JourneyTab: View {
 
     @ViewBuilder private var status: some View {
         if let beat = player.journeyBeat {
-            Hint("Playing: \(Format.hz((beat * 10).rounded() / 10)) (\(BrainwaveBand.of(beat).rawValue)), \(Format.clock(player.journeyElapsed)) in.")
+            Hint("Playing: \(Format.hz(beat)) (\(BrainwaveBand.of(beat).rawValue)), \(Format.clock(player.journeyElapsed)) in.")
         } else {
             Hint("Press play and the pulse will move through the stages below, gliding between them.")
         }
@@ -86,12 +86,5 @@ struct JourneyTab: View {
                 player.settings.journeySteps[i][keyPath: keyPath] = value
             }
         )
-    }
-
-    private func useMode(_ mode: ToneMode) {
-        var settings = player.settings
-        settings.toneEnabled = true
-        settings.toneMode = mode
-        player.settings = settings
     }
 }

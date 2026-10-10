@@ -84,6 +84,14 @@ struct NoiseSynth {
     static let toneMix: Float = 0.5
     /// Breathing swell rate: 6 cycles a minute, a common slow relaxed breathing pace.
     static let swellHz: Double = 0.1
+    /// How far the breathing swell dips the volume at the bottom of each breath.
+    static let swellDepth: Float = 0.35
+    /// Turning the swell on or off glides over this long, so switching mid-breath never steps the volume.
+    static let swellGlideSeconds: Float = 1.5
+    /// How far the 3D pan swings toward each ear: 1 would reach fully one side.
+    static let spatialSwing: Double = 0.85
+    /// Noise color changes dip to silence and back over this long.
+    static let colorDipSeconds: Float = 0.05
     /// Spatial mode: one full swing around the head takes this long.
     static let spatialPeriodSeconds: Double = 16
     /// Isochronic on/off edges are raised-cosine ramps this long, so the pulse never clicks.
@@ -93,7 +101,7 @@ struct NoiseSynth {
     private var right: NoiseChannel
     private var ambient: AmbientBank
     private var activeColor: NoiseColor
-    /// Short crossfade gain used when the noise color changes, to avoid a pop.
+    /// Dips to zero and back when the noise color changes, so the filter reset never pops.
     private var colorGain: Float = 1
     /// Double, not Float: a 10 minute fade steps ~3.5e-8 per sample, below Float precision near 1.0.
     private var master: Double
@@ -116,6 +124,7 @@ struct NoiseSynth {
     private let kinds = AmbientKind.allCases
     private let colorStep: Float
     private let smoothing: Float
+    private let swellSmoothing: Float
 
     /// startMaster and startSwellPhase let a rebuilt engine (output device change) continue where the old one left off.
     init(sampleRate: Double, params: SynthParams, startMaster: Double = 0, startSwellPhase: Double = 0) {
@@ -126,10 +135,12 @@ struct NoiseSynth {
         left = NoiseChannel(seed: 0xA5A5_1234_DEAD_BEEF, sampleRate: Float(sampleRate))
         right = NoiseChannel(seed: 0x0123_4567_89AB_CDEF, sampleRate: Float(sampleRate))
         ambient = AmbientBank(sampleRate: Float(sampleRate))
+        // Two separate buffers: sharing one would make the first write on the audio thread copy (allocate).
         ambientLevels = Array(repeating: 0, count: kinds.count)
-        ambientTargets = ambientLevels
+        ambientTargets = Array(repeating: 0, count: kinds.count)
         activeColor = params.color
-        colorStep = 1 / (0.05 * Float(sampleRate))
+        colorStep = 1 / (Self.colorDipSeconds * Float(sampleRate))
+        swellSmoothing = 1 - expf(-1 / (Self.swellGlideSeconds * Float(sampleRate)))
         // One-pole smoother with ~20 ms time constant for volume knobs and on/off switches.
         smoothing = 1 - expf(-1 / (0.02 * Float(sampleRate)))
     }
@@ -206,7 +217,7 @@ struct NoiseSynth {
 
             noiseLevel = Self.smooth(noiseLevel, toward: noiseTarget, by: smoothing)
             toneLevel = Self.smooth(toneLevel, toward: toneTarget, by: smoothing)
-            swellDepth = Self.smooth(swellDepth, toward: swellTarget, by: smoothing)
+            swellDepth = Self.smooth(swellDepth, toward: swellTarget, by: swellSmoothing)
             spatialAmount = Self.smooth(spatialAmount, toward: spatialTarget, by: smoothing)
             isoAmount = Self.smooth(isoAmount, toward: isoTarget, by: smoothing)
 
@@ -229,7 +240,7 @@ struct NoiseSynth {
             }
             if spatialAmount > 0.0001 {
                 // Equal-power pan swing: total loudness stays constant as the sound moves side to side.
-                let theta = Double.pi / 4 * (1 + 0.85 * sin(spatialPhase))
+                let theta = Double.pi / 4 * (1 + Self.spatialSwing * sin(spatialPhase))
                 let gL = Float(cos(theta) * 2.0.squareRoot())
                 let gR = Float(sin(theta) * 2.0.squareRoot())
                 bedL *= 1 + spatialAmount * (gL - 1)

@@ -4,6 +4,10 @@ import SwiftUI
 enum UI {
     static let labelWidth: CGFloat = 96
     static let valueWidth: CGFloat = 64
+
+    static func grid(_ columns: Int) -> [GridItem] {
+        Array(repeating: GridItem(.flexible(), spacing: 6), count: columns)
+    }
 }
 
 struct Panel<Content: View>: View {
@@ -92,8 +96,10 @@ struct Tile: View {
 }
 
 enum Format {
+    /// Whole numbers print plain ("852 Hz"), anything else to one decimal ("2.5 Hz").
     static func hz(_ value: Double) -> String {
-        value == value.rounded() ? "\(Int(value)) Hz" : String(format: "%.1f Hz", value)
+        let tenths = (value * 10).rounded() / 10
+        return tenths == tenths.rounded() ? "\(Int(tenths)) Hz" : String(format: "%.1f Hz", tenths)
     }
 
     static func minutes(_ minutes: Int) -> String {

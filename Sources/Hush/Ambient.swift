@@ -96,7 +96,6 @@ private struct Wind {
     private var center: SmoothRandom
     private var gust: SmoothRandom
     private var counter = 0
-    private var currentCenter: Float = 500
     private let sampleRate: Float
 
     init(seed: UInt64, sampleRate: Float) {
@@ -108,7 +107,7 @@ private struct Wind {
     }
 
     mutating func next() -> Float {
-        currentCenter = center.next(&rng)
+        let currentCenter = center.next(&rng)
         counter -= 1
         if counter <= 0 {
             counter = 64

@@ -13,6 +13,9 @@ struct Journey: Identifiable, Hashable {
     let steps: [JourneyStep]
     var id: String { name }
 
+    /// Default for a newly added stage.
+    static let newStageMinutes: Double = 10
+
     /// Seconds spent gliding from one stage's rate to the next, so the change is never abrupt.
     static let glideSeconds: Double = 120
 
@@ -53,7 +56,8 @@ struct Journey: Identifiable, Hashable {
             start += length
             previous = step.beat
         }
-        return steps.last?.beat
+        // Unreachable: the last stage always returns inside the loop.
+        return first.beat
     }
 
     static func totalMinutes(_ steps: [JourneyStep]) -> Double {
