@@ -1,98 +1,119 @@
 import AVFoundation
 import Foundation
 
-/// A named tone. Names are the traditional Solfeggio labels people search for, not medical claims.
-struct ToneChoice: Identifiable, Hashable {
-    let hz: Double
-    let name: String
-    var id: Double { hz }
-
-    static let all: [ToneChoice] = [
-        ToneChoice(hz: 174, name: "Foundation"),
-        ToneChoice(hz: 285, name: "Restore"),
-        ToneChoice(hz: 396, name: "Release"),
-        ToneChoice(hz: 417, name: "Change"),
-        ToneChoice(hz: 432, name: "Verdi tuning"),
-        ToneChoice(hz: 528, name: "Love"),
-        ToneChoice(hz: 639, name: "Connect"),
-        ToneChoice(hz: 741, name: "Clarity"),
-        ToneChoice(hz: 852, name: "Third eye"),
-        ToneChoice(hz: 963, name: "Crown"),
-    ]
-    static let defaultHz: Double = 852
-    static let customRange: ClosedRange<Double> = 100...1000
-}
-
-/// Owns the audio engine, keeps the Mac awake while playing, and runs the sleep timer.
+/// Owns the audio engine, keeps the Mac awake while playing, runs the sleep timer and journeys,
+/// and saves settings and favorites.
 @MainActor
 final class Player: ObservableObject {
     @Published private(set) var isPlaying = false
     @Published private(set) var isFadingOut = false
     @Published private(set) var sleepRemaining: TimeInterval?
     @Published private(set) var errorMessage: String?
+    /// Pulse rate the journey is playing right now, nil when no journey is running.
+    @Published private(set) var journeyBeat: Double?
+    @Published private(set) var journeyElapsed: TimeInterval = 0
+    @Published private(set) var favorites: [Favorite] = []
 
-    @Published var toneEnabled = true {
-        didSet { params.toneEnabled.store(toneEnabled, ordering: .relaxed) }
-    }
-    @Published var toneFrequency: Double = ToneChoice.defaultHz {
-        didSet { params.toneFrequency.value = Float(toneFrequency) }
-    }
-    @Published var toneLevel: Double = 0.6 {
-        didSet { params.toneLevel.value = Float(toneLevel) }
-    }
-    /// Hz difference between ears. Above 0 it becomes a slow binaural pulse, heard only on headphones.
-    @Published var binauralBeat: Double = 0 {
-        didSet { params.binauralBeat.value = Float(binauralBeat) }
-    }
-    @Published var swellEnabled = false {
-        didSet { params.swellDepth.value = swellEnabled ? Self.swellDepth : 0 }
-    }
-    @Published var noiseEnabled = false {
-        didSet { params.noiseEnabled.store(noiseEnabled, ordering: .relaxed) }
-    }
-    @Published var color: NoiseColor = .brown {
-        didSet { params.color = color }
-    }
-    @Published var noiseLevel: Double = 0.4 {
-        didSet { params.noiseLevel.value = Float(noiseLevel) }
-    }
-    /// Minutes until auto fade-out. 0 means play forever.
-    @Published var sleepMinutes: Int = 0 {
-        didSet { if isPlaying && !isFadingOut { armSleepTimer() } }
+    @Published var settings: SoundSettings {
+        didSet { settingsChanged(from: oldValue) }
     }
 
-    static let sleepChoices = [0, 15, 30, 45, 60, 90, 120, 180, 240, 480]
-    static let maxPulseHz: Double = 12
+    static let sleepChoices = [0, 15, 30, 45, 60, 90, 120, 180, 240, 360, 480, 600, 720]
+    /// How far the breathing swell dips the volume at the bottom of each breath.
+    nonisolated static let swellDepth: Float = 0.35
     private static let startFadeSeconds: Float = 2
     private static let stopFadeSeconds: Float = 1.5
     /// Longest slow fade at the end of a sleep timer. Shorter timers fade over their last third.
     private static let maxSleepFadeSeconds: TimeInterval = 600
-    /// How far the breathing swell dips the volume at the bottom of each breath.
-    private static let swellDepth: Float = 0.35
+    private static let tickInterval: TimeInterval = 0.25
 
-    private let params = SynthParams()
+    let params = SynthParams()
+    let journal: JournalStore
+    private let store: SettingsStore
     private var engine: AVAudioEngine?
     private var sleepEnd: Date?
     private var sleepFadeSeconds: TimeInterval = 0
+    private var sessionStart: Date?
     private var ticker: Timer?
     private var stopToken = 0
     private var awakeActivity: NSObjectProtocol?
     private var configObserver: NSObjectProtocol?
 
-    init() {
-        // didSet does not run for initial values, so push every default into the audio params once here.
-        params.toneEnabled.store(toneEnabled, ordering: .relaxed)
-        params.toneFrequency.value = Float(toneFrequency)
-        params.toneLevel.value = Float(toneLevel)
-        params.binauralBeat.value = Float(binauralBeat)
-        params.swellDepth.value = swellEnabled ? Self.swellDepth : 0
-        params.noiseEnabled.store(noiseEnabled, ordering: .relaxed)
-        params.color = color
-        params.noiseLevel.value = Float(noiseLevel)
+    init(store: SettingsStore = SettingsStore(), journal: JournalStore? = nil) {
+        self.store = store
+        self.journal = journal ?? JournalStore()
+        settings = store.loadLast() ?? SoundSettings()
+        favorites = store.loadFavorites()
+        // didSet does not run for the initial value, so push it into the audio params once here.
+        pushParams()
     }
 
     /// True when the current frequency matches no preset, so the UI shows the custom slider.
-    var isCustomTone: Bool { !ToneChoice.all.contains { $0.hz == toneFrequency } }
+    var isCustomTone: Bool { !ToneChoice.all.contains { $0.hz == settings.toneFrequency } }
+
+    var isJourneyActive: Bool { settings.journeyEnabled && settings.toneMode != .steady }
+
+    // MARK: Settings
+
+    private func settingsChanged(from old: SoundSettings) {
+        guard settings != old else { return }
+        pushParams()
+        store.saveLast(settings)
+        guard isPlaying && !isFadingOut else { return }
+        if settings.sleepMinutes != old.sleepMinutes { armSleepTimer() }
+        if settings.journeyEnabled != old.journeyEnabled || settings.journeySteps != old.journeySteps
+            || settings.toneMode != old.toneMode {
+            updateJourney()
+            updateTicker()
+        }
+    }
+
+    /// Copies settings into the atomics the audio thread reads. Single place, so nothing can be forgotten.
+    private func pushParams() {
+        let s = settings
+        params.toneEnabled.store(s.toneEnabled, ordering: .relaxed)
+        params.toneFrequency.value = Float(s.toneFrequency)
+        params.toneLevel.value = Float(s.toneLevel)
+        params.toneMode = s.toneMode
+        params.beatHz.value = Float(journeyBeat ?? s.beatHz)
+        params.swellDepth.value = s.swellEnabled ? Self.swellDepth : 0
+        params.spatialEnabled.store(s.spatialEnabled, ordering: .relaxed)
+        params.noiseEnabled.store(s.noiseEnabled, ordering: .relaxed)
+        params.color = s.noiseColor
+        params.noiseLevel.value = Float(s.noiseLevel)
+        for kind in AmbientKind.allCases {
+            let a = s.ambientSetting(kind)
+            params.ambientLevels[kind.index].value = a.enabled ? Float(a.level) : 0
+        }
+    }
+
+    func applyBeatPreset(_ preset: BeatPreset, mode: ToneMode) {
+        var s = settings
+        s.toneMode = mode
+        s.toneFrequency = preset.carrier
+        s.beatHz = preset.beat
+        s.toneEnabled = true
+        settings = s
+    }
+
+    // MARK: Favorites
+
+    func saveFavorite(named name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        favorites.append(Favorite(name: trimmed.isEmpty ? settings.summary : trimmed, settings: settings))
+        store.saveFavorites(favorites)
+    }
+
+    func loadFavorite(_ favorite: Favorite) {
+        settings = favorite.settings
+    }
+
+    func deleteFavorite(_ favorite: Favorite) {
+        favorites.removeAll { $0.id == favorite.id }
+        store.saveFavorites(favorites)
+    }
+
+    // MARK: Playback
 
     func toggle() {
         if isPlaying && !isFadingOut { stop() } else { play() }
@@ -112,12 +133,15 @@ final class Player: ObservableObject {
             }
             return
         }
+        if !isPlaying { sessionStart = Date() }
         params.masterFadeSeconds.value = Self.startFadeSeconds
         params.masterTarget.value = 1
         isPlaying = true
         isFadingOut = false
         keepAwake(true)
         armSleepTimer()
+        updateJourney()
+        updateTicker()
     }
 
     func stop() {
@@ -133,7 +157,7 @@ final class Player: ObservableObject {
         params.masterTarget.value = 0
         stopToken += 1
         let token = stopToken
-        startTicker()
+        updateTicker()
         // Ticker checks for the fade finishing; this is a hard backstop in case the render thread stalls.
         DispatchQueue.main.asyncAfter(deadline: .now() + Double(seconds) + 1) { [weak self] in
             guard let self, self.stopToken == token else { return }
@@ -146,43 +170,63 @@ final class Player: ObservableObject {
         guard params.masterTarget.value == 0 else { return }
         stopToken += 1 // invalidate the backstop timer so it cannot run a second stop
         engine?.stop()
+        if let start = sessionStart {
+            journal.record(start: start, end: Date(), sound: settings.summary)
+        }
+        sessionStart = nil
         isPlaying = false
         isFadingOut = false
         sleepEnd = nil
         sleepRemaining = nil
-        stopTicker()
+        journeyBeat = nil
+        journeyElapsed = 0
+        pushParams()
+        updateTicker()
         keepAwake(false)
     }
 
-    // MARK: Sleep timer
+    // MARK: Timer and journey
 
     private func armSleepTimer() {
-        if sleepMinutes > 0 {
-            let total = TimeInterval(sleepMinutes * 60)
+        if settings.sleepMinutes > 0 {
+            let total = TimeInterval(settings.sleepMinutes * 60)
             sleepEnd = Date().addingTimeInterval(total)
             sleepRemaining = total
             sleepFadeSeconds = min(Self.maxSleepFadeSeconds, total / 3)
-            startTicker()
         } else {
             sleepEnd = nil
             sleepRemaining = nil
-            // No timer and no fade: nothing to watch, so do not wake the CPU 4 times a second all night.
-            stopTicker()
         }
+        updateTicker()
     }
 
-    private func startTicker() {
-        guard ticker == nil else { return }
-        let t = Timer(timeInterval: 0.25, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated { self?.tick() }
+    private func updateJourney() {
+        guard isPlaying, isJourneyActive, let start = sessionStart else {
+            if journeyBeat != nil {
+                journeyBeat = nil
+                journeyElapsed = 0
+                pushParams()
+            }
+            return
         }
-        RunLoop.main.add(t, forMode: .common)
-        ticker = t
+        journeyElapsed = Date().timeIntervalSince(start)
+        journeyBeat = Journey.beat(at: journeyElapsed, steps: settings.journeySteps)
+        params.beatHz.value = Float(journeyBeat ?? settings.beatHz)
     }
 
-    private func stopTicker() {
-        ticker?.invalidate()
-        ticker = nil
+    /// The ticker runs only when something needs watching, so an all-night session without a timer stays idle.
+    private func updateTicker() {
+        let needed = isFadingOut || sleepEnd != nil || (isPlaying && isJourneyActive)
+        if needed, ticker == nil {
+            let t = Timer(timeInterval: Self.tickInterval, repeats: true) { [weak self] _ in
+                MainActor.assumeIsolated { self?.tick() }
+            }
+            RunLoop.main.add(t, forMode: .common)
+            ticker = t
+        } else if !needed {
+            ticker?.invalidate()
+            ticker = nil
+        }
     }
 
     private func tick() {
@@ -190,6 +234,7 @@ final class Player: ObservableObject {
             if params.masterGain.value <= 0 { finishStop() }
             return
         }
+        if isJourneyActive { updateJourney() }
         guard let end = sleepEnd else { return }
         let left = end.timeIntervalSinceNow
         if left <= sleepFadeSeconds {
@@ -216,7 +261,8 @@ final class Player: ObservableObject {
         let sampleRate = outFormat.sampleRate > 0 ? outFormat.sampleRate : 48_000
         let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 2)!
         var synth = NoiseSynth(sampleRate: sampleRate, params: params,
-                               startMaster: Double(params.masterGain.value))
+                               startMaster: Double(params.masterGain.value),
+                               startSwellPhase: Double(params.swellPhase.value))
 
         let source = AVAudioSourceNode(format: format) { _, _, frameCount, audioBufferList in
             let buffers = UnsafeMutableAudioBufferListPointer(audioBufferList)
