@@ -4,6 +4,8 @@ import SwiftUI
 enum UI {
     static let labelWidth: CGFloat = 96
     static let valueWidth: CGFloat = 64
+    /// Fill for unselected tiles and the disabled play button.
+    static let quietFill = Color.secondary.opacity(0.12)
 
     static func grid(_ columns: Int) -> [GridItem] {
         Array(repeating: GridItem(.flexible(), spacing: 6), count: columns)
@@ -68,6 +70,22 @@ struct Hint: View {
     }
 }
 
+/// The main action button in brand colours. Drawn by hand instead of .borderedProminent, because the system
+/// style turns grey whenever the window is in the background (most of the night), which hid the label.
+struct PrimaryButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .padding(.vertical, 12)
+            .foregroundStyle(isEnabled ? AnyShapeStyle(Brand.onAccent) : AnyShapeStyle(.tertiary))
+            .background(isEnabled ? AnyShapeStyle(Brand.accent) : AnyShapeStyle(UI.quietFill),
+                        in: RoundedRectangle(cornerRadius: 10))
+            .opacity(configuration.isPressed ? 0.8 : 1)
+            .contentShape(Rectangle())
+    }
+}
+
 /// Selectable tile used for tone and preset grids.
 struct Tile: View {
     let title: String
@@ -80,12 +98,12 @@ struct Tile: View {
             VStack(spacing: 1) {
                 Text(title).font(.headline.monospacedDigit()).lineLimit(1).minimumScaleFactor(0.7)
                 Text(subtitle).font(.caption2).lineLimit(1).minimumScaleFactor(0.7)
-                    .foregroundStyle(selected ? .white.opacity(0.85) : .secondary)
+                    .foregroundStyle(selected ? Brand.onAccent : .secondary)
             }
             .frame(maxWidth: .infinity, minHeight: 40)
             .padding(.horizontal, 2)
-            .foregroundStyle(selected ? .white : .primary)
-            .background(selected ? Color.accentColor : Color.secondary.opacity(0.12),
+            .foregroundStyle(selected ? Brand.onAccent : .primary)
+            .background(selected ? Brand.accent : UI.quietFill,
                         in: RoundedRectangle(cornerRadius: 8))
             .contentShape(Rectangle())
         }

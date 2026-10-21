@@ -83,7 +83,7 @@ private struct JournalRow: View {
                 Button(Self.faces[score - 1]) { set(score) }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
-                    .tint(value == score ? .accentColor : nil)
+                    .tint(value == score ? Brand.accent : nil)
                     .accessibilityAddTraits(value == score ? .isSelected : [])
             }
         }

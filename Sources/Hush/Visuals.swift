@@ -27,7 +27,7 @@ struct Waveform: View {
                         if i == 0 { path.move(to: point) } else { path.addLine(to: point) }
                     }
                 }
-                context.stroke(path, with: .color(.accentColor), lineWidth: 1.2)
+                context.stroke(path, with: .color(Brand.accent), lineWidth: 1.2)
             }
         }
         .accessibilityHidden(true)
@@ -47,8 +47,8 @@ struct BreathingGuide: View {
             let breathingIn = phase > .pi
             HStack(spacing: 16) {
                 ZStack {
-                    Circle().fill(Color.accentColor.opacity(0.12)).frame(width: 72, height: 72)
-                    Circle().fill(Color.accentColor.opacity(0.55))
+                    Circle().fill(Brand.accent.opacity(0.12)).frame(width: 72, height: 72)
+                    Circle().fill(Brand.accent.opacity(0.55))
                         .frame(width: 24 + 48 * fullness, height: 24 + 48 * fullness)
                 }
                 VStack(alignment: .leading, spacing: 2) {

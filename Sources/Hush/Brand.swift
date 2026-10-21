@@ -4,6 +4,31 @@ import SwiftUI
 /// The Hush logo, drawn from the same measurements as the masters in `brand/` (see `brand/generate.py`).
 /// The idea: the last stroke of the "h" settles into a flat line, like a tone fading out.
 enum Brand {
+    // Brand colours, hex values as in brand/BRAND.md.
+    private static let lamp = rgb(0xF2B66B)
+    /// Ember: 5.4:1 with white text, 4.6:1 against the light window. UI only, never the logo.
+    private static let ember = rgb(0x9C5A12)
+    private static let night = rgb(0x12141C)
+
+    private static func rgb(_ hex: UInt32) -> NSColor {
+        NSColor(srgbRed: CGFloat(hex >> 16 & 0xFF) / 255, green: CGFloat(hex >> 8 & 0xFF) / 255,
+                blue: CGFloat(hex & 0xFF) / 255, alpha: 1)
+    }
+
+    /// Picks the dark or light value as the appearance changes, so one colour serves both modes.
+    private static func adaptive(dark: NSColor, light: NSColor) -> Color {
+        Color(nsColor: NSColor(name: nil) { appearance in
+            appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light
+        })
+    }
+
+    /// The app's accent: Lamp in dark mode; Ember in light mode, where Lamp is too pale to read on the window.
+    static let accent = adaptive(dark: lamp, light: ember)
+    /// Text and icons on an accent fill: Night on Lamp (10.2:1), white on Ember (5.4:1).
+    static let onAccent = adaptive(dark: night, light: .white)
+    /// Window background: Night in dark mode, the standard window colour in light mode.
+    static let background = adaptive(dark: night, light: .windowBackgroundColor)
+
     /// Menu bar glyph: the mark as a template image, so macOS tints it for light and dark bars.
     /// 18 pt is the standard menu bar icon box; the mark's ink fills about 15 pt of it, like an SF Symbol.
     static let menuBarImage: NSImage = {

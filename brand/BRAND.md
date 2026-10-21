@@ -21,6 +21,18 @@ Warm lamplight on a night sky. The sleep category is full of purple gradients, m
 Lamp on Night has a contrast ratio of about 10:1. On white backgrounds use Night, never Lamp (too low contrast).
 One colour (black, white, Lamp or Night) is always allowed. No gradients, glows or shadows on the logo.
 
+### In the app
+
+| Name | HEX | Use |
+|---|---|---|
+| Lamp | `#F2B66B` | accent in dark mode, with Night text on it (10.2:1) |
+| Ember | `#9C5A12` | accent in light mode, with white text on it (5.4:1); 4.6:1 against the window. UI only, never the logo |
+| Night | `#12141C` | window background in dark mode; light mode keeps the system window colour |
+
+`Sources/Hush/Brand.swift` holds these as `Brand.accent`, `Brand.onAccent` and `Brand.background`, which switch with the system appearance. Every control in the window uses them instead of system blue; the menu bar menu stays a standard system menu.
+
+The hush-core web demo mirrors these as CSS tokens (`--accent`, `--on-accent`, `--logo`), with `#1A1D28` as its raised surface in dark mode.
+
 ## Files
 
 | File | Use |

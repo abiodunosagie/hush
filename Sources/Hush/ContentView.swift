@@ -84,16 +84,16 @@ struct ContentView: View {
                 Text(buttonTitle)
                     .font(.title3.weight(.semibold))
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
+            .buttonStyle(PrimaryButtonStyle())
             // Space plays and stops, except on tabs with text fields, where it must type a space.
             .keyboardShortcut(tab == .favorites || tab == .journal ? nil : KeyboardShortcut(.space, modifiers: []))
-            // Never disable while playing, or a running session could not be stopped.
-            .disabled(!player.isPlaying && !player.settings.hasAnySource)
+            .disabled(!canPlay)
         }
     }
+
+    /// Never disabled while playing, or a running session could not be stopped.
+    private var canPlay: Bool { player.isPlaying || player.settings.hasAnySource }
 
     private var statusLine: String {
         if player.isFadingOut { return "Fading out gently..." }

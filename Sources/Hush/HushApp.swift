@@ -34,6 +34,9 @@ struct HushApp: App {
     var body: some Scene {
         Window("Hush", id: MenuBarContent.windowID) {
             ContentView(player: player)
+                // Brand colours for every control (play button, switches, sliders) and the window itself.
+                .tint(Brand.accent)
+                .containerBackground(Brand.background, for: .window)
                 .onAppear { delegate.onTerminate = { [player] in MainActor.assumeIsolated { player.recordSessionOnQuit() } } }
         }
         .windowResizability(.contentSize)
