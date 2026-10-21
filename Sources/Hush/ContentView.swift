@@ -7,6 +7,8 @@ struct ContentView: View {
 
     private enum Tab: Hashable { case sound, layers, journey, favorites, journal }
     private static let contentHeight: CGFloat = 470
+    /// Wordmark height in the header; about the cap height of the large title it replaced.
+    private static let wordmarkHeight: CGFloat = 26
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -46,7 +48,13 @@ struct ContentView: View {
     private var header: some View {
         HStack(alignment: .center, spacing: 16) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Hush").font(.largeTitle.weight(.bold))
+                HushWordmark().fill(.primary)
+                    .frame(width: Self.wordmarkHeight * HushWordmark.aspectRatio, height: Self.wordmarkHeight)
+                    // Breathing room between the wordmark, the window top and the status line.
+                    .padding(.vertical, 4)
+                    .accessibilityElement()
+                    .accessibilityLabel("Hush")
+                    .accessibilityAddTraits(.isHeader)
                 Text(statusLine).font(.callout).foregroundStyle(.secondary).lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
             }

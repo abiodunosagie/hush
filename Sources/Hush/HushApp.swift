@@ -41,8 +41,15 @@ struct HushApp: App {
         MenuBarExtra {
             MenuBarContent(player: player)
         } label: {
-            Image(systemName: player.isPlaying ? "waveform" : "moon.zzz")
-                .accessibilityLabel(player.isPlaying ? "Hush, playing" : "Hush")
+            // The logo when idle; the waveform shows at a glance that sound is playing.
+            Group {
+                if player.isPlaying {
+                    Image(systemName: "waveform")
+                } else {
+                    Image(nsImage: Brand.menuBarImage)
+                }
+            }
+            .accessibilityLabel(player.isPlaying ? "Hush, playing" : "Hush")
         }
     }
 }

@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 /// Offline checks through the real synth: no clipping or drift over hours, correct pitch, pulse rate,
 /// fade timing, journeys and saved settings.
@@ -26,6 +27,7 @@ enum SelfTest {
         ok = journeySchedule() && ok
         ok = settingsRoundTrip() && ok
         ok = settingsSurviveBadData() && ok
+        ok = logoMatchesMasters() && ok
         return ok
     }
 
@@ -339,5 +341,30 @@ enum SelfTest {
 
         return report(settingsOK && favoritesOK,
                       "bad saved data: other settings kept (\(settingsOK)), good favorites kept and backup made (\(favoritesOK))")
+    }
+
+    /// The logo is drawn twice, in Brand.swift and brand/generate.py. The Swift drawing must cover the same area
+    /// as the SVG masters (mark 37...219 by 22...234 in its 256 box, wordmark edge to edge in 467 x 172), and ink
+    /// or leave empty the points that give each letter its shape, so a flipped arc or a moved stroke fails here.
+    private static func logoMatchesMasters() -> Bool {
+        func near(_ a: CGRect, _ b: CGRect) -> Bool {
+            abs(a.minX - b.minX) < 0.5 && abs(a.minY - b.minY) < 0.5 && abs(a.maxX - b.maxX) < 0.5 && abs(a.maxY - b.maxY) < 0.5
+        }
+        func shaped(_ path: Path, inked: [CGPoint], empty: [CGPoint]) -> Bool {
+            inked.allSatisfy { path.contains($0) } && !empty.contains { path.contains($0) }
+        }
+        let mark = HushMark().path(in: CGRect(origin: .zero, size: HushMark.box))
+        let word = HushWordmark().path(in: CGRect(origin: .zero, size: HushWordmark.box))
+        // Mark: arch top, settled tail; empty arch and tail centres and the space under the arch.
+        let markOK = near(mark.boundingRect, CGRect(x: 37, y: 22, width: 182, height: 212))
+            && shaped(mark, inked: [CGPoint(x: 98, y: 95), CGPoint(x: 193, y: 220)],
+                      empty: [CGPoint(x: 98, y: 142), CGPoint(x: 98, y: 189), CGPoint(x: 181, y: 184)])
+        // Wordmark (ink box coordinates): h arch top, u bottom, s top, spine and bottom, final tail; empty counters.
+        let wordOK = near(word.boundingRect, CGRect(origin: .zero, size: HushWordmark.box))
+            && shaped(word, inked: [CGPoint(x: 51, y: 61), CGPoint(x: 161, y: 161), CGPoint(x: 262, y: 61),
+                                    CGPoint(x: 262, y: 111), CGPoint(x: 262, y: 161), CGPoint(x: 448, y: 161)],
+                      empty: [CGPoint(x: 51, y: 101), CGPoint(x: 161, y: 121), CGPoint(x: 262, y: 86),
+                              CGPoint(x: 262, y: 136), CGPoint(x: 375, y: 101)])
+        return report(markOK && wordOK, "logo geometry matches the brand masters (mark \(markOK), wordmark \(wordOK))")
     }
 }

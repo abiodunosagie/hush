@@ -1,4 +1,9 @@
-# Hush
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="brand/hush-wordmark-lamp.svg">
+    <img src="brand/hush-wordmark-night.svg" alt="Hush" width="180">
+  </picture>
+</h1>
 
 A native macOS app for calm and sleep. Hush plays pure tones, binaural and isochronic beats, seven colours of noise and five nature sounds. All of it is synthesized live on the audio thread, so nothing loops and it can play cleanly all night.
 
@@ -100,9 +105,11 @@ Sources/Hush/
   SoundTab.swift, LayersTab.swift, JourneyTab.swift, FavoritesTab.swift, JournalTab.swift   one file per tab
   Visuals.swift          waveform and breathing guide
   Components.swift       shared SwiftUI building blocks
+  Brand.swift            logo mark, wordmark and menu bar glyph drawn in code
   HushApp.swift          app entry, menu bar extra, --selftest switch
   SelfTest.swift         offline audio checks
 scripts/build.sh         builds and assembles the .app bundle
+brand/                   logo masters (SVG), app icon and brand guidelines
 ```
 
 ## Privacy
