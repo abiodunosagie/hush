@@ -48,6 +48,40 @@ def write(name, body, width, height, top=0):
         f.write(svg)
 
 
+BANNER_LINES = {
+    # file: (tag after the wordmark, line, detail)
+    "banner-hush": ("", "Calm and sleep sounds for macOS, synthesized live.", "Swift · SwiftUI · AVAudioEngine"),
+    "banner-hush-core": ("core", "A real-time calm and sleep sound engine in Rust.", "Rust · terminal player · WebAssembly"),
+    "banner-hush-audio": ("audio", "Calm and sleep sounds for Flutter, powered by Rust.", "Flutter · dart:ffi · Rust · iOS, Android, macOS"),
+}
+
+
+def banner(tag, line, detail):
+    """Animated 1280 x 640 README header (banner.png in each repo is the still social preview).
+    The word wipes in, then the last h's tail settles flat, like the tone fading; the lines fade in.
+    Everything is visible by default; hidden start states live only inside the keyframes."""
+    word, _ = wordmark_path()
+    body, tail = word.rsplit(" H456", 1)[0], "M440,203 H456"
+    scale, left, top = 0.93, 115, 160
+    style = """<style>
+.wipe{transform-box:fill-box;transform-origin:left center;animation:grow 1.2s cubic-bezier(.65,0,.35,1) .2s both}
+.tail{transform-box:fill-box;transform-origin:left center;animation:grow .7s cubic-bezier(.22,1,.36,1) 1.4s both}
+.line{animation:fade .8s ease-out 1.9s both}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.wipe,.tail,.line{animation:none}}
+</style><defs><clipPath id="reveal"><rect class="wipe" x="0" y="0" width="445" height="256"/></clipPath></defs>"""
+    letters = (f'<g transform="translate({left},{top - WORD_INK_TOP * scale:.1f}) scale({scale})">'
+               f'<g clip-path="url(#reveal)">{stroke(body, WORD_WEIGHT, LAMP)}</g>'
+               f'<path class="tail" d="{tail}" fill="none" stroke="{LAMP}" stroke-width="{WORD_WEIGHT}" stroke-linecap="round"/></g>')
+    font = 'font-family="-apple-system,BlinkMacSystemFont,Helvetica Neue,Arial,sans-serif"'
+    tag_svg = (f'<text class="line" x="{left + 467 * scale + 22:.0f}" y="{top + 160}" font-family="Menlo,monospace" '
+               f'font-size="44" fill="#9A9AA6">{tag}</text>') if tag else ""
+    text = (f'<g class="line"><text x="{left}" y="{top + 245}" {font} font-size="40" fill="#E9E5DC">{line}</text>'
+            f'<text x="{left}" y="{top + 300}" font-family="Menlo,monospace" font-size="24" fill="#9A9AA6">{detail}</text></g>')
+    return f'<rect width="1280" height="640" fill="{NIGHT}"/>{style}{letters}{tag_svg}{text}'
+
+
 def main():
     word, word_width = wordmark_path()
     for suffix, color in (("", "#000"), ("-white", "#FFFFFF"), ("-lamp", LAMP), ("-night", NIGHT)):
@@ -57,6 +91,8 @@ def main():
     icon = (f'<rect x="100" y="100" width="824" height="824" rx="185" fill="{NIGHT}"/>'
             f'<g transform="translate(192,192) scale(2.5)">{stroke(mark_path(), MARK_WEIGHT, LAMP)}</g>')
     write("app-icon", icon, 1024, 1024)
+    for name, (tag, line, detail) in BANNER_LINES.items():
+        write(name, banner(tag, line, detail), 1280, 640)
 
 
 if __name__ == "__main__":

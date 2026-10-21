@@ -45,7 +45,8 @@ The hush-core web demo mirrors these as CSS tokens (`--accent`, `--on-accent`, `
 | `AppIcon.icns` | built app icon, copied into the bundle by `scripts/build.sh` |
 | `generate.py` | regenerates every SVG above from the shared measurements |
 | `make-icon.sh`, `MakeIcon.swift` | rebuild `AppIcon.icns` from the Swift drawing |
-| `banner.png` | README header and GitHub social preview, 1280x640 |
+| `banner.png` | GitHub social preview, 1280x640 |
+| `banner-hush.svg`, `banner-hush-core.svg`, `banner-hush-audio.svg` | animated README headers for hush, hush-core and hush_audio: the word wipes in, the last h's tail settles flat. Still under reduced motion. |
 
 `Sources/Hush/Brand.swift` draws the same geometry in code for the window header and the menu bar.
 If you change the geometry, change it in both places.

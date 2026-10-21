@@ -1,4 +1,4 @@
-<img src="brand/banner.png" alt="Hush: calm and sleep sounds for macOS, synthesized live" width="100%">
+<img src="brand/banner-hush.svg" alt="Hush: calm and sleep sounds for macOS, synthesized live" width="100%">
 
 [![CI](https://github.com/abiodunosagie/hush/actions/workflows/ci.yml/badge.svg)](https://github.com/abiodunosagie/hush/actions/workflows/ci.yml)
 
