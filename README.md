@@ -1,9 +1,6 @@
-<h1>
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="brand/hush-wordmark-lamp.svg">
-    <img src="brand/hush-wordmark-night.svg" alt="Hush" width="180">
-  </picture>
-</h1>
+<img src="brand/banner.png" alt="Hush: calm and sleep sounds for macOS, synthesized live" width="100%">
+
+[![CI](https://github.com/abiodunosagie/hush/actions/workflows/ci.yml/badge.svg)](https://github.com/abiodunosagie/hush/actions/workflows/ci.yml)
 
 A native macOS app for calm and sleep. Hush plays pure tones, binaural and isochronic beats, seven colours of noise and five nature sounds. All of it is synthesized live on the audio thread, so nothing loops and it can play cleanly all night.
 
@@ -52,6 +49,10 @@ Real-time audio can crackle, drop out or drift over a long night. These choices 
 - macOS 15 or later
 - Xcode 16 or later, or a Swift 6 toolchain (the package builds in Swift 5 language mode)
 
+## Download
+
+The latest build is on the [Releases page](https://github.com/abiodunosagie/hush/releases/latest): unzip and open `Hush.app` (macOS 15 or later). It is ad-hoc signed, so the first launch needs right-click, then Open.
+
 ## Build and run
 
 ```bash
@@ -74,7 +75,7 @@ swift build -c release
 $(swift build -c release --show-bin-path)/Hush --selftest
 ```
 
-There are 28 checks. They cover:
+There are 29 checks. They cover:
 
 - Every noise colour and nature sound is level-matched to brown noise.
 - Three hours with every layer at maximum stays under full scale, with no NaN and no DC drift.
@@ -86,6 +87,7 @@ There are 28 checks. They cover:
 - An output device change keeps the fade and the breathing position.
 - The journey schedule holds, glides and keeps the last stage.
 - Saved settings load correctly, even when written by an older version or containing bad data.
+- The logo drawn in code matches the SVG masters in `brand/`.
 
 ## Project layout
 
@@ -110,6 +112,7 @@ Sources/Hush/
   SelfTest.swift         offline audio checks
 scripts/build.sh         builds and assembles the .app bundle
 brand/                   logo masters (SVG), app icon and brand guidelines
+.github/workflows/ci.yml  CI: release build, self-test and app bundle on macOS
 ```
 
 ## Privacy

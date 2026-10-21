@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build, self-test and app bundle (macOS)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: swift --version
+      - run: swift build -c release
+      # Offline checks through the real synth; no audio device needed.
+      - run: "$(swift build -c release --show-bin-path)/Hush --selftest"
+      - run: ./scripts/build.sh
