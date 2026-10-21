@@ -51,7 +51,7 @@ Real-time audio can crackle, drop out or drift over a long night. These choices 
 
 ## Download
 
-The latest build is on the [Releases page](https://github.com/abiodunosagie/hush/releases/latest): unzip and open `Hush.app` (macOS 15 or later). It is ad-hoc signed, so the first launch needs right-click, then Open.
+The latest build is on the [Releases page](https://github.com/abiodunosagie/hush/releases/latest): unzip and open `Hush.app` (macOS 15 or later, Apple silicon). It is ad-hoc signed, so the first launch needs right-click, then Open.
 
 ## Build and run
 
