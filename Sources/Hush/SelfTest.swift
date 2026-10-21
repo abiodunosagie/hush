@@ -365,6 +365,7 @@ enum SelfTest {
                                     CGPoint(x: 262, y: 111), CGPoint(x: 262, y: 161), CGPoint(x: 448, y: 161)],
                       empty: [CGPoint(x: 51, y: 101), CGPoint(x: 161, y: 121), CGPoint(x: 262, y: 86),
                               CGPoint(x: 262, y: 136), CGPoint(x: 375, y: 101)])
-        return report(markOK && wordOK, "logo geometry matches the brand masters (mark \(markOK), wordmark \(wordOK))")
+        let detail = "mark \(markOK) \(mark.boundingRect.integral), wordmark \(wordOK) \(word.boundingRect.integral)"
+        return report(markOK && wordOK, "logo geometry matches the brand masters (\(detail))")
     }
 }
