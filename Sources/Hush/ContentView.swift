@@ -4,6 +4,7 @@ import SwiftUI
 struct ContentView: View {
     @ObservedObject var player: Player
     @State private var tab = Tab.sound
+    @FocusState private var playFocused: Bool
 
     private enum Tab: Hashable { case sound, layers, journey, favorites, journal }
     private static let contentHeight: CGFloat = 470
@@ -85,7 +86,10 @@ struct ContentView: View {
                     .font(.title3.weight(.semibold))
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(PrimaryButtonStyle())
+            .buttonStyle(PrimaryButtonStyle(isFocused: playFocused))
+            // The style draws its own ring that stays visible on the accent fill.
+            .focusEffectDisabled()
+            .focused($playFocused)
             // Space plays and stops, except on tabs with text fields, where it must type a space.
             .keyboardShortcut(tab == .favorites || tab == .journal ? nil : KeyboardShortcut(.space, modifiers: []))
             .disabled(!canPlay)

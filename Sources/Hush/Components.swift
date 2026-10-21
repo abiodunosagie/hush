@@ -73,16 +73,36 @@ struct Hint: View {
 /// The main action button in brand colours. Drawn by hand instead of .borderedProminent, because the system
 /// style turns grey whenever the window is in the background (most of the night), which hid the label.
 struct PrimaryButtonStyle: ButtonStyle {
-    @Environment(\.isEnabled) private var isEnabled
+    /// Whether the button has keyboard focus. Passed in from the caller's @FocusState, because the
+    /// style's own focus environment describes the view around the button, not the button.
+    var isFocused = false
 
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .padding(.vertical, 12)
-            .foregroundStyle(isEnabled ? AnyShapeStyle(Brand.onAccent) : AnyShapeStyle(.tertiary))
-            .background(isEnabled ? AnyShapeStyle(Brand.accent) : AnyShapeStyle(UI.quietFill),
-                        in: RoundedRectangle(cornerRadius: 10))
-            .opacity(configuration.isPressed ? 0.8 : 1)
-            .contentShape(Rectangle())
+        PrimaryButton(configuration: configuration, isFocused: isFocused)
+    }
+
+    /// A view, not inline in makeBody, so it can read the button's enabled state.
+    private struct PrimaryButton: View {
+        let configuration: Configuration
+        let isFocused: Bool
+        @Environment(\.isEnabled) private var isEnabled
+        private static let shape = RoundedRectangle(cornerRadius: 10)
+
+        var body: some View {
+            configuration.label
+                .padding(.vertical, 12)
+                .foregroundStyle(isEnabled ? AnyShapeStyle(Brand.onAccent) : AnyShapeStyle(.tertiary))
+                .background(isEnabled ? AnyShapeStyle(Brand.accent) : AnyShapeStyle(UI.quietFill), in: Self.shape)
+                // Keyboard focus ring (Full Keyboard Access). Drawn here because a ring in the accent colour
+                // would vanish against the accent fill: primary text colour, just outside the button.
+                .overlay {
+                    if isFocused {
+                        Self.shape.inset(by: -3).stroke(.primary, lineWidth: 2)
+                    }
+                }
+                .opacity(configuration.isPressed ? 0.8 : 1)
+                .contentShape(Rectangle())
+        }
     }
 }
 
